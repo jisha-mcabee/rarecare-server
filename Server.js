@@ -5,6 +5,8 @@ const authRoutes = require("./routes/authRoutes");
 const streamRoutes = require("./routes/streamRoutes");
 const courseRoutes = require('./routes/courseRoutes');
 const studentRoutes = require('./routes/studentRoutes');
+const instituteRoutes = require('./routes/instituteRoutes');
+
 
 const cors = require("cors");
 
@@ -21,6 +23,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/streams", streamRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/institutes',instituteRoutes)
+
 
 const PORT = process.env.PORT || 5000;
 

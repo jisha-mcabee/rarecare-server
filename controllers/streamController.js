@@ -2,43 +2,61 @@ const Stream = require('../models/Stream');
 
 // Add new academic stream
 const addStream = async (req, res) => {
-  const { name } = req.body;
+  const { name, description } = req.body;
+
+  if (!name || !description) {
+    return res.status(400).json({ message: 'Name and description are required' });
+  }
 
   try {
     const existingStream = await Stream.findOne({ name });
     if (existingStream) {
-      return res.status(400).json({ message: 'Stream already exists' });
+      return res.status(409).json({ message: 'Stream already exists' });
     }
 
-    const newStream = new Stream({ name });
+    const newStream = new Stream({ name, description });
     await newStream.save();
-    res.status(201).json({ message: 'Stream added successfully', newStream });
+
+    res.status(201).json({ message: 'Stream added successfully', stream: newStream });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+    console.error("Error adding stream:", error);
+
+    // Handling validation errors specifically
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: 'Validation error',
+        errors: error.errors,
+      });
+    }
+
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 // Update academic stream
-const updateStream = async (req, res) => {
-  const { id } = req.params;
-  const { name } = req.body;
+const deleteStreams = async (req, res) => {
+  const { ids } = req.body; // Accept an array of stream IDs
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ message: 'Invalid stream IDs' });
+  }
 
   try {
-    const updatedStream = await Stream.findByIdAndUpdate(
-      id,
-      { name },
-      { new: true }
-    );
+    const result = await Stream.deleteMany({ _id: { $in: ids } });
 
-    if (!updatedStream) {
-      return res.status(404).json({ message: 'Stream not found' });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'No streams found to delete' });
     }
 
-    res.status(200).json({ message: 'Stream updated successfully', updatedStream });
+    res.status(200).json({
+      message: `${result.deletedCount} stream(s) deleted successfully`,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
   }
 };
+
 
 // List all academic streams
 const listStreams = async (req, res) => {
@@ -50,4 +68,4 @@ const listStreams = async (req, res) => {
   }
 };
 
-module.exports = { addStream, updateStream, listStreams };
+module.exports = { addStream, deleteStreams, listStreams };
