@@ -46,10 +46,6 @@ const addCourse = async (req, res) => {
   }
 };
 
-
-
-
-
 const updateCourse = async (req, res) => {
   const { id } = req.params; // ✅ Course ID from params
   const {

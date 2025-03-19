@@ -24,6 +24,7 @@ app.use("/api/streams", streamRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/institutes',instituteRoutes)
+app.use('/uploads', express.static('uploads'));
 
 
 const PORT = process.env.PORT || 5000;

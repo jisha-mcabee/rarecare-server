@@ -1,20 +1,73 @@
 const Institute = require('../models/Institute');
 const InstituteCourse = require('../models/InstituteCourse');
 // Add new institute
+// const addInstitute = async (req, res) => {
+//   const { stream, description, instituteName, affiliationType, universityName } = req.body;
+
+//   // Validate required fields
+//   if (!stream || !description || !instituteName || !affiliationType) {
+//     return res.status(400).json({ message: 'Stream, description, instituteName, and affiliationType are required' });
+//   }
+
+//   // Validate affiliation type
+//   if (!['Affiliated', 'Deemed / Autonomous'].includes(affiliationType)) {
+//     return res.status(400).json({ message: 'Invalid affiliation type. It should be either "Affiliated" or "Deemed / Autonomous"' });
+//   }
+
+//   try {
+//     // Check if institute already exists
+//     const existingInstitute = await Institute.findOne({ instituteName });
+//     if (existingInstitute) {
+//       return res.status(409).json({ message: 'Institute already exists' });
+//     }
+
+//     // Create new institute
+//     const newInstitute = new Institute({
+//       stream,
+//       description,
+//       instituteName,
+//       affiliationType,
+//       universityName
+//     });
+
+//     await newInstitute.save();
+
+//     res.status(201).json({
+//       message: 'Institute added successfully',
+//       institute: newInstitute
+//     });
+//   } catch (error) {
+//     console.error('Error adding institute:', error);
+
+//     // Handle validation error
+//     if (error.name === 'ValidationError') {
+//       return res.status(400).json({
+//         message: 'Validation error',
+//         errors: error.errors
+//       });
+//     }
+
+//     res.status(500).json({ message: 'Server error', error: error.message });
+//   }
+// };
+
+
+
 const addInstitute = async (req, res) => {
-  const { stream, description, instituteName, affiliationType, universityName } = req.body;
-
-  // Validate required fields
-  if (!stream || !description || !instituteName || !affiliationType) {
-    return res.status(400).json({ message: 'Stream, description, instituteName, and affiliationType are required' });
-  }
-
-  // Validate affiliation type
-  if (!['Affiliated', 'Deemed / Autonomous'].includes(affiliationType)) {
-    return res.status(400).json({ message: 'Invalid affiliation type. It should be either "Affiliated" or "Deemed / Autonomous"' });
-  }
-
   try {
+    const { stream, description, instituteName, affiliationType, universityName } = req.body;
+    const image = req.file ? req.file.path : null; // Get uploaded file path
+
+    // Validate required fields
+    if (!stream || !description || !instituteName || !affiliationType) {
+      return res.status(400).json({ message: 'Stream, description, instituteName, and affiliationType are required' });
+    }
+
+    // Validate affiliation type
+    if (!['Affiliated', 'Deemed / Autonomous'].includes(affiliationType)) {
+      return res.status(400).json({ message: 'Invalid affiliation type. It should be either "Affiliated" or "Deemed / Autonomous"' });
+    }
+
     // Check if institute already exists
     const existingInstitute = await Institute.findOne({ instituteName });
     if (existingInstitute) {
@@ -27,7 +80,8 @@ const addInstitute = async (req, res) => {
       description,
       instituteName,
       affiliationType,
-      universityName
+      universityName,
+      image // Save image path to DB
     });
 
     await newInstitute.save();
@@ -36,10 +90,15 @@ const addInstitute = async (req, res) => {
       message: 'Institute added successfully',
       institute: newInstitute
     });
+
   } catch (error) {
     console.error('Error adding institute:', error);
 
-    // Handle validation error
+    // Handle multer-specific file upload errors
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ message: 'File size should not exceed 5MB' });
+    }
+
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         message: 'Validation error',
@@ -50,7 +109,6 @@ const addInstitute = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
 
 // Add new course
 const addInstituteCourse = async (req, res) => {
@@ -148,5 +206,67 @@ const getInstituteCourseDetails = async (req, res) => {
     }
   };
 
+  const listStreams = async (req, res) => {
+    try {
+      // Fetch stream and instituteName with id
+      const streams = await Institute.find().select('stream instituteName');
+  
+      if (!streams.length) {
+        return res.status(404).json({ message: 'No streams found' });
+      }
+  
+      // Group streams by instituteName
+      const groupedStreams = streams.reduce((acc, stream) => {
+        const instituteName = stream.stream || 'Unknown';
+  
+        if (!acc[instituteName]) {
+          acc[instituteName] = [];
+        }
+  
+        // Add stream and id to the instituteName group
+        acc[instituteName].push({ id: stream._id, stream: stream.instituteName });
+  
+        return acc;
+      }, {});
+  
+      // Convert the grouped object into an array of objects
+      const result = Object.keys(groupedStreams).map((stream) => ({
+        stream,
+        streams: groupedStreams[stream],
+      }));
+  
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('Error fetching streams:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  };
+  
+  
+const getCoursesByInstituteAndStream = async (req, res) => {
+  const { instituteName, stream } = req.query;
+console.log( instituteName, stream );
 
-module.exports = { addInstitute ,addInstituteCourse ,getInstituteCourseDetails,listInstitutes };
+  if (!instituteName || !stream) {
+    return res.status(400).json({ message: 'Institute name and stream are required' });
+  }
+
+  try {
+    // Find courses matching the instituteName and stream
+    const courses = await InstituteCourse.find({
+      institute: instituteName,
+      stream: stream
+    });
+
+    if (!courses.length) {
+      return res.status(404).json({ message: 'No courses found for the provided institute and stream' });
+    }
+
+    res.status(200).json({ courses });
+  } catch (error) {
+    console.error('Error fetching courses:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = { addInstitute ,addInstituteCourse ,getInstituteCourseDetails,listInstitutes,listStreams,getCoursesByInstituteAndStream };

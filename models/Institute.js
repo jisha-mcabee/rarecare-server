@@ -10,7 +10,8 @@ const instituteSchema = new mongoose.Schema(
         required: true, 
         enum: ['Affiliated', 'Deemed / Autonomous'] // Restrict values to these two options
       },
-    universityName: { type: String }
+    universityName: { type: String },
+    image: { type: String }
   },
   { timestamps: true }
 );
